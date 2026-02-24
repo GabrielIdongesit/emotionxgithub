@@ -13,7 +13,7 @@ import spare6 from "../assets/spare6.png";
 import spare8 from "../assets/spare8.png";
 import spare9 from "../assets/spare9.png";
 
-export const data = [
+const defaultData = [
   { id: 1, name: "Electric Mountain Bike", type: "bike", category: "AKEZ", image: bike2, price: "1800", description: "High power electric mountain bike for rough terrains." },
   { id: 2, name: "Bycycle hub", type: "spare", category: "Bycyclehub", image: spare4, price: "155", description: "Ebikeling waterproof ebike conversion kit with battery." },
   { id: 3, name: "Electric Dirt Bike", type: "bike", category: "Surron", image: bike4, price: "3200", description: "Off-road dirt bike with excellent suspension for uneven tracks." },
@@ -28,4 +28,29 @@ export const data = [
   { id: 12, name: "BikeHub", type: "spare", category: "BikeHub", image: spare9, price: "95", description: "This is an 8000W electric bike hub motor conversion kit" },
 ];
 
-export const priceFilters = ["155", "200", "90", "95", "110", "1200", "1400", "1800", "2500", "3200", "12990"];
+// Initialize localStorage with default data if empty
+const initializeProducts = () => {
+  if (!localStorage.getItem("products")) {
+    localStorage.setItem("products", JSON.stringify(defaultData));
+  }
+};
+
+initializeProducts();
+
+// Get products from localStorage or default
+export const getProducts = () => {
+  const stored = localStorage.getItem("products");
+  return stored ? JSON.parse(stored) : defaultData;
+};
+
+// Export data getter
+export const data = getProducts();
+
+// Helper function to get current price filters
+export const getPriceFilters = () => {
+  const products = getProducts();
+  const prices = [...new Set(products.map(p => p.price))].sort((a, b) => Number(a) - Number(b));
+  return prices;
+};
+
+export const priceFilters = getPriceFilters();

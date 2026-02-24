@@ -1,23 +1,49 @@
 // src/components/Bike.jsx
-import React, { useState } from "react";
-import { data, priceFilters } from "../data/data.js";
+import React, { useState, useEffect } from "react";
+import { getProducts, getPriceFilters } from "../data/data.js";
 
 const Bike = ({ searchTerm, setSelectedProduct, addToCart }) => {
-  const [bikes, setBikes] = useState(data);
+  const [allBikes, setAllBikes] = useState([]);
+  const [bikes, setBikes] = useState([]);
+
+  // Load products from localStorage on mount and when storage changes
+  useEffect(() => {
+    const loadProducts = () => {
+      const products = getProducts();
+      setAllBikes(products);
+      setBikes(products);
+    };
+
+    loadProducts();
+
+    // Listen for storage changes from other tabs/components
+    const handleStorageChange = () => {
+      loadProducts();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    // Custom event listener for updates within the same tab
+    window.addEventListener("productsUpdated", loadProducts);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("productsUpdated", loadProducts);
+    };
+  }, []);
 
   // Filter by type
   const filterType = (category) => {
     if (category === "All") {
-      setBikes(data);
+      setBikes(allBikes);
     } else {
-      setBikes(data.filter((item) => item.category === category));
+      setBikes(allBikes.filter((item) => item.category === category));
     }
   };
 
   // Filter by price (number comparison)
   const filterPrice = (price) => {
     const numericPrice = Number(price); // convert to number
-    setBikes(data.filter((item) => Number(item.price) === numericPrice));
+    setBikes(allBikes.filter((item) => Number(item.price) === numericPrice));
   };
 
   // Search filter
@@ -74,7 +100,7 @@ Check it out here 👇`;
         <div className="mt-4 lg:mt-0">
           <p className="font-bold text-gray-700">Filter Price</p>
           <div className="flex flex-wrap mt-2">
-            {priceFilters.map((price, idx) => (
+            {getPriceFilters().map((price, idx) => (
               <button
                 key={idx}
                 onClick={() => filterPrice(price)}

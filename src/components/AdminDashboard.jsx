@@ -20,9 +20,20 @@ import { useNavigate } from "react-router-dom";
 const AdminDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
+  const [products, setProducts] = useState([]);
   const [filteredProduct, setFilteredProduct] = useState(null);
   const [activeSlice, setActiveSlice] = useState(null);
   const [receiptOrder, setReceiptOrder] = useState(null); // For receipt modal
+  const [activeTab, setActiveTab] = useState("orders"); // Tab switcher
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    price: "",
+    category: "",
+    description: "",
+    type: "bike"
+  });
 
   useEffect(() => {
     const savedOrders = JSON.parse(localStorage.getItem("orders")) || [];
@@ -30,6 +41,9 @@ const AdminDashboard = () => {
 
     const savedUsers = JSON.parse(localStorage.getItem("users")) || [];
     setUsers(savedUsers);
+
+    const savedProducts = JSON.parse(localStorage.getItem("products")) || [];
+    setProducts(savedProducts);
   }, []);
 
   const navigate = useNavigate();
@@ -178,25 +192,121 @@ Thank you for your purchase 🙏
     window.open(whatsappURL, "_blank");
   };
 
+  // ===== PRODUCT MANAGEMENT FUNCTIONS =====
+  const handleAddProduct = () => {
+    if (!formData.name || !formData.price || !formData.category) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    if (editingProduct) {
+      // Update existing product
+      const updatedProducts = products.map(p =>
+        p.id === editingProduct.id
+          ? { ...p, ...formData }
+          : p
+      );
+      setProducts(updatedProducts);
+      localStorage.setItem("products", JSON.stringify(updatedProducts));
+      setEditingProduct(null);
+    } else {
+      // Add new product
+      const newProduct = {
+        id: Math.max(...products.map(p => p.id), 0) + 1,
+        ...formData,
+        image: "https://via.placeholder.com/300"
+      };
+      const updatedProducts = [...products, newProduct];
+      setProducts(updatedProducts);
+      localStorage.setItem("products", JSON.stringify(updatedProducts));
+    }
+
+    // Notify other components of the change
+    window.dispatchEvent(new Event("productsUpdated"));
+
+    // Reset form
+    setFormData({
+      name: "",
+      price: "",
+      category: "",
+      description: "",
+      type: "bike"
+    });
+    setShowAddProduct(false);
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      description: product.description,
+      type: product.type
+    });
+    setShowAddProduct(true);
+  };
+
+  const handleDeleteProduct = (productId) => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      const updatedProducts = products.filter(p => p.id !== productId);
+      setProducts(updatedProducts);
+      localStorage.setItem("products", JSON.stringify(updatedProducts));
+      window.dispatchEvent(new Event("productsUpdated"));
+    }
+  };
+
+  const handleCloseForm = () => {
+    setShowAddProduct(false);
+    setEditingProduct(null);
+    setFormData({
+      name: "",
+      price: "",
+      category: "",
+      description: "",
+      type: "bike"
+    });
+  };
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <button
-          onClick={clearOrders}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+          onClick={adminLogin}
+          className="bg-black text-white px-4 py-2 rounded hover:opacity-80"
         >
-          Clear Orders
+          Logout
         </button>
       </div>
 
-      <button
-  onClick={adminLogin}
-  className="bg-black text-white px-4 py-2 rounded hover:opacity-80"
->
-  Logout
-</button>
+      {/* Tab Navigation */}
+      <div className="flex gap-2 mb-6 bg-white p-2 rounded shadow">
+        <button
+          onClick={() => setActiveTab("orders")}
+          className={`px-4 py-2 rounded font-semibold transition ${
+            activeTab === "orders"
+              ? "bg-teal-500 text-white"
+              : "bg-gray-200 text-black hover:bg-gray-300"
+          }`}
+        >
+          Orders & Analytics
+        </button>
+        <button
+          onClick={() => setActiveTab("products")}
+          className={`px-4 py-2 rounded font-semibold transition ${
+            activeTab === "products"
+              ? "bg-teal-500 text-white"
+              : "bg-gray-200 text-black hover:bg-gray-300"
+          }`}
+        >
+          Manage Products
+        </button>
+      </div>
 
+      {/* ===== ORDERS & ANALYTICS TAB ===== */}
+      {activeTab === "orders" && (
+        <>
       {/* ===== STATS ===== */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard title="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} color="text-green-600" />
@@ -363,6 +473,136 @@ Thank you for your purchase 🙏
           </ul>
         )}
       </div>
+        </>
+      )}
+
+      {/* ===== PRODUCTS MANAGEMENT TAB ===== */}
+      {activeTab === "products" && (
+        <div className="space-y-6">
+          {/* Add/Edit Product Button */}
+          {!showAddProduct && (
+            <button
+              onClick={() => {
+                setShowAddProduct(true);
+                setEditingProduct(null);
+                setFormData({ name: "", price: "", category: "", description: "", type: "bike" });
+              }}
+              className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded font-semibold"
+            >
+              + Add New Product
+            </button>
+          )}
+
+          {/* Add/Edit Product Form */}
+          {showAddProduct && (
+            <div className="bg-white p-6 rounded shadow">
+              <h2 className="text-2xl font-bold mb-4">
+                {editingProduct ? "Edit Product" : "Add New Product"}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Product Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="border p-2 rounded"
+                />
+                <input
+                  type="number"
+                  placeholder="Price"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="border p-2 rounded"
+                />
+                <input
+                  type="text"
+                  placeholder="Category"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="border p-2 rounded"
+                />
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  className="border p-2 rounded"
+                >
+                  <option value="bike">Bike</option>
+                  <option value="spare">Spare Part</option>
+                </select>
+                <textarea
+                  placeholder="Description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="border p-2 rounded md:col-span-2"
+                  rows="3"
+                />
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={handleAddProduct}
+                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded font-semibold"
+                >
+                  {editingProduct ? "Update Product" : "Add Product"}
+                </button>
+                <button
+                  onClick={handleCloseForm}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Products Table */}
+          <div className="bg-white p-6 rounded shadow">
+            <h2 className="text-xl font-bold mb-4">All Products ({products.length})</h2>
+            {products.length === 0 ? (
+              <p className="text-gray-500">No products yet</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b bg-gray-100">
+                      <th className="p-2">Product Name</th>
+                      <th className="p-2">Category</th>
+                      <th className="p-2">Price</th>
+                      <th className="p-2">Type</th>
+                      <th className="p-2">Description</th>
+                      <th className="p-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map((product) => (
+                      <tr key={product.id} className="border-b hover:bg-gray-50">
+                        <td className="p-2 font-semibold">{product.name}</td>
+                        <td className="p-2">{product.category}</td>
+                        <td className="p-2">${product.price}</td>
+                        <td className="p-2 capitalize">{product.type}</td>
+                        <td className="p-2 text-sm text-gray-700">{product.description}</td>
+                        <td className="p-2 space-x-2">
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(product.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
